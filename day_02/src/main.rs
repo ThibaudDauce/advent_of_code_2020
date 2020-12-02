@@ -1,9 +1,29 @@
 fn main() {
+    part1();
+    part2();
+}
+
+fn part1() {
     let passwords = input();
     let mut number_of_correct_passwords = 0;
     for password in &passwords {
         let count = password.password.matches(password.search).count();
-        if  count >= password.min && count <= password.max {
+        if  count >= password.number_1 && count <= password.number_2 {
+            number_of_correct_passwords += 1;
+        }
+    }
+
+    println!("Number of correct passwords: {}", number_of_correct_passwords);
+}
+
+fn part2() {
+    let passwords = input();
+    let mut number_of_correct_passwords = 0;
+    for password in &passwords {
+        let char_1 = &password.password[password.number_1 - 1..password.number_1];
+        let char_2 = &password.password[password.number_2 - 1..password.number_2];
+
+        if  (char_1 == password.search || char_2 == password.search) && !(char_1 == password.search && char_2 == password.search) {
             number_of_correct_passwords += 1;
         }
     }
@@ -12,8 +32,8 @@ fn main() {
 }
 
 struct Password {
-    min: usize,
-    max: usize,
+    number_1: usize,
+    number_2: usize,
     search: &'static str,
     password: &'static str,
 }
@@ -23,20 +43,19 @@ fn input() -> Vec<Password> {
         .trim()
         .lines()
         .map(|line| {
-            dbg!(&line);
             let mut parts = line.trim().split(": ");
             let mut constraints = parts.next().unwrap().split(" ");
-            let mut minmax = constraints.next().unwrap().split("-");
-            let min = minmax.next().unwrap().parse().unwrap();
-            let max = minmax.next().unwrap().parse().unwrap();
+            let mut numbers = constraints.next().unwrap().split("-");
+            let number_1 = numbers.next().unwrap().parse().unwrap();
+            let number_2 = numbers.next().unwrap().parse().unwrap();
 
             let search = constraints.next().unwrap();
 
             let password = parts.next().unwrap();
 
             Password {
-                min,
-                max,
+                number_1,
+                number_2,
                 search,
                 password
             }
