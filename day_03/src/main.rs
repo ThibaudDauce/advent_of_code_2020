@@ -1,25 +1,41 @@
 fn main() {
     part1();
+    part2();
 }
 
 fn part1() {
-    let number_of_trees = compute_number_of_trees(raw_input());
+    let number_of_trees = compute_number_of_trees(raw_input(), 3, 1);
 
     println!("Number of trees: {}", number_of_trees);
 }
 
-fn compute_number_of_trees(raw_input: &str) -> u32 {
+fn part2() {
+
+    let result = compute_number_of_trees(raw_input(), 1, 1) *
+        compute_number_of_trees(raw_input(), 3, 1) *
+        compute_number_of_trees(raw_input(), 5, 1) *
+        compute_number_of_trees(raw_input(), 7, 1) *
+        compute_number_of_trees(raw_input(), 1, 2);
+
+    println!("Result is {}", result);
+}
+
+fn compute_number_of_trees(raw_input: &str, right: usize, down: usize) -> u32 {
     let map = input(raw_input);
 
     let mut column_index = 0;
     let mut number_of_trees = 0;
 
-    for line in map {
+    for (index, line) in map.iter().enumerate() {
+        if (index % down) != 0 {
+            continue;
+        }
+
         match line[column_index % line.len()] {
             Spot::Empty => {},
             Spot::Tree => { number_of_trees += 1 }
         };
-        column_index += 3;
+        column_index += right;
     }
 
     number_of_trees
@@ -27,7 +43,7 @@ fn compute_number_of_trees(raw_input: &str) -> u32 {
 
 #[test]
 fn test_number_of_trees() {
-    let number_of_trees = compute_number_of_trees("
+    let raw_input = "
     ..##.......
     #...#...#..
     .#....#..#.
@@ -39,9 +55,13 @@ fn test_number_of_trees() {
     #.##...#...
     #...##....#
     .#..#...#.#
-    ");
+    ";
 
-    assert_eq!(7, number_of_trees);
+    assert_eq!(2, compute_number_of_trees(raw_input, 1, 1));
+    assert_eq!(7, compute_number_of_trees(raw_input, 3, 1));
+    assert_eq!(3, compute_number_of_trees(raw_input, 5, 1));
+    assert_eq!(4, compute_number_of_trees(raw_input, 7, 1));
+    assert_eq!(2, compute_number_of_trees(raw_input, 1, 2));
 }
 
 enum Spot {
