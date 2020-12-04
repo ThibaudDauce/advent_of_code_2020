@@ -1,3 +1,5 @@
+use regex::Regex;
+
 fn main() {
     part1();
 }
@@ -6,18 +8,38 @@ fn part1() {
     println!("Number of passports: {}", input(raw_input()).len());
 }
 
+#[derive(Debug)]
+enum HeightType {
+    Cm,
+    In,
+}
+
+#[derive(Debug)]
+struct Height {
+    value: u32,
+    height_type: HeightType,
+}
+
+#[derive(Debug)]
 struct Passport {
-    byr : &'static str,
-    iyr : &'static str,
-    eyr : &'static str,
-    hgt : &'static str,
+    byr : u32,
+    iyr : u32,
+    eyr : u32,
+    hgt : Height,
     hcl : &'static str,
-    ecl : &'static str,
+    ecl : EyeColor,
     pid : &'static str,
     cid : Option<&'static str>,
 }
 
+#[derive(Debug)]
+enum EyeColor {
+    Amb, Blu, Brn, Gry, Grn, Hzl, Oth
+}
+
 fn input(raw_input: &'static str) -> Vec<Passport> {
+    let color_regex = Regex::new(r"^#[0-9a-f]{6}$").unwrap();
+
     raw_input
         .trim()
         .split("\n\n")
@@ -38,13 +60,50 @@ fn input(raw_input: &'static str) -> Vec<Passport> {
                 let value = key_value.next().unwrap();
 
                 match key {
-                    "byr" => { byr = Some(value); },
-                    "iyr" => { iyr = Some(value); },
-                    "eyr" => { eyr = Some(value); },
-                    "hgt" => { hgt = Some(value); },
-                    "hcl" => { hcl = Some(value); },
-                    "ecl" => { ecl = Some(value); },
-                    "pid" => { pid = Some(value); },
+                    "byr" => {
+                        if let Ok(byr_as_digits) = value.parse() {
+                            if byr_as_digits >= 1920 && byr_as_digits <= 2002 {
+                                byr = Some(byr_as_digits);
+                            }
+                        }
+                     },
+                    "iyr" => { 
+                        if let Ok(iyr_as_digits) = value.parse() {
+                            if iyr_as_digits >= 2010 && iyr_as_digits <= 2020 {
+                                iyr = Some(iyr_as_digits);
+                            }
+                        }
+                     },
+                    "eyr" => { 
+                        if let Ok(eyr_as_digits) = value.parse() {
+                            if eyr_as_digits >= 2020 && eyr_as_digits <= 2030 {
+                                eyr = Some(eyr_as_digits);
+                            }
+                        }
+                     },
+                    "hgt" => { 
+                        hgt = parse_height(value);
+                     },
+                    "hcl" => { 
+                        if color_regex.is_match(value) {
+                            hcl = Some(value);
+                        }
+                     },
+                    "ecl" => { 
+                        match value {
+                            "amb" => ecl = Some(EyeColor::Amb),
+                            "blu" => ecl = Some(EyeColor::Blu),
+                            "brn" => ecl = Some(EyeColor::Brn),
+                            "gry" => ecl = Some(EyeColor::Gry),
+                            "grn" => ecl = Some(EyeColor::Grn),
+                            "hzl" => ecl = Some(EyeColor::Hzl),
+                            "oth" => ecl = Some(EyeColor::Oth),
+                            _ => {},
+                        }
+                     },
+                    "pid" => { 
+                        pid = parse_pid(value);
+                     },
                     "cid" => { cid = Some(value); },
                     _ => { panic!("Unknown key: {}", key) },
                 };
@@ -58,6 +117,58 @@ fn input(raw_input: &'static str) -> Vec<Passport> {
             }
         })
         .collect()
+}
+
+fn parse_height(value: &str) -> Option<Height> {
+    let (height_as_string, height_type_as_string) = value.split_at(value.len() - 2);
+    let option_height_type = match height_type_as_string {
+        "cm" => Some(HeightType::Cm),
+        "in" => Some(HeightType::In),
+        _ => None,
+    };
+
+    if let Ok(height) = height_as_string.parse() {
+        if let Some(height_type) = option_height_type {
+            match height_type {
+                HeightType::Cm => {
+                    if height >= 150 && height <= 193 {
+                        return Some(Height { value: height, height_type })
+                    } 
+                }
+                HeightType::In => {
+                    if height >= 59 && height <= 76 {
+                        return Some(Height { value: height, height_type })
+                    } 
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn parse_pid(value: &'static str) -> Option<&'_ str> {
+    let id_regex = Regex::new(r"^\d{9}$").unwrap();
+
+    if id_regex.is_match(value) {
+        Some(value)
+    } else {
+        None
+    }
+}
+
+#[test]
+fn test_parse_pid() {
+    assert!(parse_pid("000000001").is_some());
+    assert!(parse_pid("0123456789").is_none());
+}
+
+#[test]
+fn test_parse_height() {
+    assert!(parse_height("60in").is_some());
+    assert!(parse_height("190cm").is_some());
+    assert!(parse_height("190in").is_none());
+    assert!(parse_height("190").is_none());
 }
 
 #[test]
@@ -76,7 +187,36 @@ fn test_parsing() {
 
         hcl:#cfa07d eyr:2025 pid:166559648
         iyr:2011 ecl:brn hgt:59in
-    ").len())
+    ").len());
+    assert_eq!(0, input("
+        eyr:1972 cid:100
+        hcl:#18171d ecl:amb hgt:170 pid:186cm iyr:2018 byr:1926
+
+        iyr:2019
+        hcl:#602927 eyr:1967 hgt:170cm
+        ecl:grn pid:012533040 byr:1946
+
+        hcl:dab227 iyr:2012
+        ecl:brn hgt:182cm pid:021572410 eyr:2020 byr:1992 cid:277
+
+        hgt:59cm ecl:zzz
+        eyr:2038 hcl:74454a iyr:2023
+        pid:3556412378 byr:2007
+    ").len());
+    assert_eq!(4, input("
+        pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980
+        hcl:#623a2f
+
+        eyr:2029 ecl:blu cid:129 byr:1989
+        iyr:2014 pid:896056539 hcl:#a97842 hgt:165cm
+
+        hcl:#888785
+        hgt:164cm byr:2001 iyr:2015 cid:88
+        pid:545766238 ecl:hzl
+        eyr:2022
+
+        iyr:2010 hgt:158cm hcl:#b6652a ecl:blu byr:1944 eyr:2021 pid:093154719
+    ").len());
 }
 
 
