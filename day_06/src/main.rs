@@ -1,7 +1,9 @@
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 fn main() {
     part1();
+    part2();
 }
 
 fn part1()
@@ -16,6 +18,33 @@ fn part1()
         let yes_count = group_answers.len();
         result += yes_count;
         println!("Group yes count: {}", yes_count);
+    }
+
+    println!("Result is {}", result);
+}
+
+fn part2()
+{
+    let mut result = 0;
+    for group in raw_input().split("\n\n") {
+        let mut yes_answers: HashMap<char, usize> = HashMap::new();
+ 
+        let persons = group.lines();
+        let mut persons_count = 0;
+
+        for person in persons {
+            persons_count += 1;
+            for one_char in person.chars() {
+                let count = yes_answers.entry(one_char).or_insert(0);
+                *count += 1;
+            }
+        }
+
+        for (one_char, count) in &yes_answers {
+            if *count == persons_count {
+                result += 1;
+            }
+        }
     }
 
     println!("Result is {}", result);
