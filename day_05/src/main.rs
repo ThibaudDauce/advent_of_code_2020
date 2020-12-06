@@ -1,22 +1,45 @@
 fn main() {
     part1();
+    part2();
 }
 
 fn part1()
 {
-    let positions = raw_input()
+    let mut ids: Vec<u32> = raw_input()
         .trim()
-        .lines();
+        .lines()
+        .map(|row_column| get_seat_id(row_column))
+        .collect();
+    
+    ids.sort();
 
     let mut result = 0;
-    for row_column in positions {
-        let seat_id = get_seat_id(row_column);
+    for seat_id in ids {
         if seat_id > result {
             result = seat_id;
         }
     } 
 
     println!("Result is: {}", result);
+}
+
+fn part2()
+{
+    let mut ids: Vec<u32> = raw_input()
+        .trim()
+        .lines()
+        .map(|row_column| get_seat_id(row_column))
+        .collect();
+    
+    ids.sort();
+
+    for (index, seat_id) in ids.iter().enumerate() {
+        if let Some(next_seat_id) = ids.get(index + 1) {
+            if *next_seat_id != (seat_id + 1) {
+                println!("Found missing seat ID: {}", seat_id + 1);
+            }
+        }
+    } 
 }
 
 fn get_seat_id(row_column: &str) -> u32
