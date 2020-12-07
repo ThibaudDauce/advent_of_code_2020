@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 fn main() {
     part1();
+    part2();
 }
 
 fn part1()
@@ -10,9 +11,38 @@ fn part1()
     println!("Result is {}", result);
 }
 
+fn part2()
+{
+    let result = compute_result_part2(raw_input());
+    println!("Result is {}", result);
+}
+
+fn compute_result_part2(raw_input: &'static str) -> u64
+{
+    let bags: HashMap<&str, HashMap<String, u64>> = compute_bag_info(raw_input);
+
+    number_of_bags_inside(&bags, "shiny gold")
+}
+
+fn number_of_bags_inside(bags_info: &HashMap<&str, HashMap<String, u64>>, bag_info: &str) -> u64
+{
+    let bags_inside_info = bags_info.get(bag_info).unwrap();
+
+    let mut result = 0;
+
+    for (bag_inside_info, number_of_bags) in bags_inside_info {
+        result += number_of_bags;
+        result += number_of_bags * number_of_bags_inside(bags_info, bag_inside_info);
+    }
+
+    result
+}
+
+
 #[test]
 fn test_part1()
 {
+    assert_eq!(233, compute_result_part1(raw_input()));
     assert_eq!(4, compute_result_part1("
 light red bags contain 1 bright white bag, 2 muted yellow bags.
 dark orange bags contain 3 bright white bags, 4 muted yellow bags.
@@ -26,11 +56,37 @@ dotted black bags contain no other bags.
     "))
 }
 
-fn compute_result_part1(raw_input: &str) -> u64
+#[test]
+fn test_part2()
+{
+    // assert_eq!(233, compute_result_part2(raw_input()));
+    assert_eq!(32, compute_result_part2("
+light red bags contain 1 bright white bag, 2 muted yellow bags.
+dark orange bags contain 3 bright white bags, 4 muted yellow bags.
+bright white bags contain 1 shiny gold bag.
+muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.
+shiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.
+dark olive bags contain 3 faded blue bags, 4 dotted black bags.
+vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
+faded blue bags contain no other bags.
+dotted black bags contain no other bags.
+    "));
+    assert_eq!(126, compute_result_part2("
+shiny gold bags contain 2 dark red bags.
+dark red bags contain 2 dark orange bags.
+dark orange bags contain 2 dark yellow bags.
+dark yellow bags contain 2 dark green bags.
+dark green bags contain 2 dark blue bags.
+dark blue bags contain 2 dark violet bags.
+dark violet bags contain no other bags.
+    "));
+}
+
+fn compute_bag_info(raw_input: &'static str) -> HashMap<&'static str, HashMap<String, u64>>
 {
     let lines = raw_input.trim().lines();
 
-    let mut bags: HashMap<&str, Vec<String>> = HashMap::new();
+    let mut bags: HashMap<&str, HashMap<String, u64>> = HashMap::new();
 
     for line in lines {
         let mut parts = line.split(" contain ");
@@ -39,24 +95,31 @@ fn compute_result_part1(raw_input: &str) -> u64
 
         let (main_bag_info, _) = main_bag.split_at(main_bag.len() - " bags".len());
 
-        let mut bags_inside_info = vec![];
+        let mut bags_inside_info = HashMap::new();
 
         if bags_inside != "no other bags." {
             let bags_inside = bags_inside.split(", ");
             for bag_inside in bags_inside {
                 let mut parts = bag_inside.split_whitespace();
     
-                let _number_of_bags_inside: u64 = parts.next().unwrap().parse().unwrap();
+                let number_of_bags_inside: u64 = parts.next().unwrap().parse().unwrap();
                 let adj = parts.next().unwrap();
                 let color = parts.next().unwrap();
     
                 let bag_info = format!("{} {}", adj, color);
-                bags_inside_info.push(bag_info);
+                bags_inside_info.insert(bag_info, number_of_bags_inside);
             }
         }
 
         bags.insert(main_bag_info, bags_inside_info);
     }
+
+    bags
+}
+
+fn compute_result_part1(raw_input: &'static str) -> u64
+{
+    let bags = compute_bag_info(raw_input);
 
     let mut result = 0;
     for bag_info in bags.keys() {
@@ -68,11 +131,11 @@ fn compute_result_part1(raw_input: &str) -> u64
     result
 }
 
-fn can_contains_shiny_gold(bags_info: &HashMap<&str, Vec<String>>, bag_info: &str) -> bool
+fn can_contains_shiny_gold(bags_info: &HashMap<&str, HashMap<String, u64>>, bag_info: &str) -> bool
 {
     let bags_inside_info = bags_info.get(bag_info).unwrap();
 
-    for bag_inside_info in bags_inside_info {
+    for (bag_inside_info, _number_of_bags) in bags_inside_info {
         if bag_inside_info == "shiny gold" {
             return true;
         }
