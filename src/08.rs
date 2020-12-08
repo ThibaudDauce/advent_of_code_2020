@@ -1,7 +1,11 @@
+use std::collections::HashSet;
+
 fn main() {
     part1();
+    part2();
 }
 
+#[derive(Debug)]
 enum Operation
 {
     Nop,
@@ -9,6 +13,7 @@ enum Operation
     Jmp,
 }
 
+#[derive(Debug)]
 struct Instruction
 {
     operation: Operation,
@@ -19,11 +24,18 @@ struct Instruction
 fn part1() 
 {
     let accumulator = compute_part1(raw_input());
-    println!("Accumulator is {}", accumulator);
+    println!("Part 1 accumulator is {}", accumulator);
 }
 
-fn compute_part1(raw_input: &'static str) -> i64 {
-    let mut instructions: Vec<Instruction> = raw_input
+fn part2() 
+{
+    let accumulator = compute_part2(raw_input());
+    println!("Part 2 accumulator is {}", accumulator);
+}
+
+fn input(raw_input: &'static str) -> Vec<Instruction>
+{
+    raw_input
         .trim()
         .lines()
         .map(|line| {
@@ -42,7 +54,11 @@ fn compute_part1(raw_input: &'static str) -> i64 {
                 execution_count: 0,
             }
         })
-        .collect();
+        .collect()
+}
+
+fn compute_part1(raw_input: &'static str) -> i64 {
+    let mut instructions = input(raw_input);
 
     let mut instruction_index: i64 = 0;
     let mut accumulator = 0;
@@ -70,10 +86,106 @@ fn compute_part1(raw_input: &'static str) -> i64 {
     }
 }
 
+struct BranchTest {
+    original_accumulator: i64,
+    path: Vec<i64>,
+}
+
+impl BranchTest {
+    fn start(accumulator: i64, index: i64) -> BranchTest {
+        BranchTest { original_accumulator: accumulator, path: vec![index] }
+    }
+}
+
+fn compute_part2(raw_input: &'static str) -> i64 {
+    let mut instructions = input(raw_input);
+
+
+    let mut branch_test: Option<BranchTest> = None;
+    let mut instructions_tested = HashSet::new();
+
+    let mut instruction_index: i64 = 0;
+    let mut accumulator = 0;
+    loop {
+        if instruction_index >= (instructions.len() as i64) {
+            return accumulator;
+        }
+
+        let mut instruction = &mut instructions[instruction_index as usize];
+        // dbg!(instruction_index, &instruction);
+
+        if instruction.execution_count > 0 {
+            let previous_branch_test = branch_test.unwrap();
+            instruction_index = previous_branch_test.path[0];
+            for index in previous_branch_test.path {
+                let mut instruction = &mut instructions[index as usize];
+                instruction.execution_count -= 1;
+            }
+
+            accumulator = previous_branch_test.original_accumulator;
+
+            branch_test = None;
+            continue;
+        }
+
+        if let Some(ref mut current_branch_test) = branch_test {
+            current_branch_test.path.push(instruction_index);
+        }
+
+        instruction.execution_count += 1;
+
+        match instruction.operation {
+            Operation::Nop => {
+                if instructions_tested.contains(&instruction_index) || branch_test.is_some() {
+
+                } else {
+                    instructions_tested.insert(instruction_index);
+                    branch_test = Some(BranchTest::start(accumulator, instruction_index));
+                    instruction_index += instruction.argument;
+                    continue;
+                }
+            },
+            Operation::Acc => {
+                accumulator += instruction.argument;
+            },
+            Operation::Jmp => {
+                if instructions_tested.contains(&instruction_index) || branch_test.is_some()  {
+                    instruction_index += instruction.argument;
+                    continue;
+                } else {
+                    instructions_tested.insert(instruction_index);
+                    branch_test = Some(BranchTest::start(accumulator, instruction_index))
+                }
+                
+            }
+        }
+
+        instruction_index += 1;
+    }
+}
+
 #[test]
 fn test_part1()
 {
+    assert_eq!(1087, compute_part1(raw_input()));
     assert_eq!(5, compute_part1("
+nop +0
+acc +1
+jmp +4
+acc +3
+jmp -3
+acc -99
+acc +1
+jmp -4
+acc +6
+    "))
+}
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(780, compute_part2(raw_input()));
+    assert_eq!(8, compute_part2("
 nop +0
 acc +1
 jmp +4
