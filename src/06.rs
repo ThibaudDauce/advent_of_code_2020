@@ -40,7 +40,7 @@ fn part2()
             }
         }
 
-        for (one_char, count) in &yes_answers {
+        for (_one_char, count) in &yes_answers {
             if *count == persons_count {
                 result += 1;
             }
