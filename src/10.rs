@@ -1,6 +1,11 @@
+use std::collections::HashMap;
+
 fn main()
 {
     let result = part1(raw_input());
+    println!("Result {}", result);
+
+    let result = part2(raw_input());
     println!("Result {}", result);
 }
 
@@ -31,6 +36,110 @@ fn part1(raw_input: &str) -> usize
     }
 
     one_count * three_count
+}
+
+fn part2(raw_input: &str) -> usize
+{
+    let mut input = input(raw_input);
+    input.push(0);
+    input.sort();
+
+    let cache = HashMap::new();
+
+    let (number_of_possibilities, _cache) = compute_part2(&input, 0, cache);
+    number_of_possibilities
+}
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(43406276662336, part2(raw_input()));
+    assert_eq!(4, part2("
+    1
+    2
+    3
+    "));
+    assert_eq!(8, part2("
+        16
+        10
+        15
+        5
+        1
+        11
+        7
+        19
+        6
+        12
+        4
+    "));
+    assert_eq!(19208, part2("
+    28
+    33
+    18
+    42
+    31
+    14
+    46
+    20
+    48
+    47
+    24
+    23
+    49
+    45
+    19
+    38
+    39
+    11
+    1
+    32
+    25
+    35
+    8
+    17
+    7
+    9
+    4
+    2
+    34
+    10
+    3
+    "));
+}
+
+fn compute_part2(input: &Vec<usize>, index: usize, mut cache: HashMap<usize, usize>) -> (usize, HashMap<usize, usize>)
+{
+    let value = input[index];
+    if let Some(number_of_possibilities) = cache.get(&value) {
+        return (*number_of_possibilities, cache);
+    }
+
+    if index == input.len() - 1 {
+        return (1, cache);
+    }
+
+    let mut number_of_possibilities = 0;
+    let mut j = 1;
+    loop {
+        if index + j >= input.len() {
+            break;
+        }
+
+        let next = input[index + j];
+
+        if next > value + 3 {
+            break;
+        }
+
+        let (next_number_of_possibilities, new_cache) = compute_part2(input, index + j, cache);
+        number_of_possibilities += next_number_of_possibilities;
+        cache = new_cache;
+
+        j += 1;
+    }
+
+    cache.insert(value, number_of_possibilities);
+    (number_of_possibilities, cache)
 }
 
 #[test]
