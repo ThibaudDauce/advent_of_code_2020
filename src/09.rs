@@ -1,6 +1,7 @@
 fn main()
 {
     part1();
+    part2();
 }
 
 fn part1()
@@ -9,11 +10,45 @@ fn part1()
     println!("Result is {}", result);
 }
 
+fn part2()
+{
+    let result = compute_part2(raw_input(), 25);
+    println!("Result is {}", result);
+}
+
 #[test]
 fn test_part1()
 {
     assert_eq!(50047984, compute_part1(raw_input(), 25));
     assert_eq!(127, compute_part1("
+    35
+    20
+    15
+    25
+    47
+    40
+    62
+    55
+    65
+    95
+    102
+    117
+    150
+    182
+    127
+    219
+    299
+    277
+    309
+    576
+    ", 5));
+}
+
+#[test]
+fn test_part2()
+{
+    // assert_eq!(50047984, compute_part2(raw_input(), 25));
+    assert_eq!(62, compute_part2("
     35
     20
     15
@@ -63,6 +98,43 @@ fn compute_part1(raw_input: &str, preambule_size: usize) -> usize
     }
 
     panic!("End of input.");
+}
+
+fn compute_part2(raw_input: &str, preambule_size: usize) -> usize
+{
+    let invalid_number = compute_part1(raw_input, preambule_size);
+
+    let input = input(raw_input);
+
+    for i in 0..input.len() {
+        let mut j = i;
+        let mut sum = 0; 
+        let mut min = usize::MAX;
+        let mut max = 0;
+        loop {
+            sum += input[j];
+
+            if input[j] < min {
+                min = input[j];
+            }
+
+            if input[j] > max {
+                max = input[j];
+            }
+
+            if sum == invalid_number {
+                return min + max;
+            }
+
+            if sum > invalid_number {
+                break;
+            }
+
+            j += 1;
+        }
+    }
+
+    panic!("End of input");
 }
 
 fn input(raw_input: &str) -> Vec<usize>
