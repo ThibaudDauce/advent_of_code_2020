@@ -4,19 +4,23 @@ fn main()
 {
     let result = part1(raw_input());
     println!("Part 1: {}", result);
+
+    let result = part2(raw_input());
+    println!("Part 2: {}", result);
 }
 
-#[derive(Hash, Eq, PartialEq, Debug)]
+#[derive(Hash, Eq, PartialEq, Debug, Clone)]
 struct Position {
     column: i64,
     line: i64,
 }
 
-fn part1(raw_input: &'static str) -> usize
+fn input(raw_input: &'static str) -> (HashSet<Position>, Position)
 {
     let mut seats = HashSet::new();
 
     let mut line_index = 1;
+    let mut max_column = 0;
     for line in raw_input.trim().lines() {
         let mut column_index = 1;
 
@@ -33,7 +37,15 @@ fn part1(raw_input: &'static str) -> usize
         }
 
         line_index += 1;
+        max_column = column_index;
     }
+
+    (seats, Position { column: max_column, line: line_index })
+}
+
+fn part1(raw_input: &'static str) -> usize
+{
+    let (seats, _max) = input(raw_input);
 
     let mut occupied_seats = HashSet::new();
     loop {
@@ -76,9 +88,91 @@ fn part1(raw_input: &'static str) -> usize
     }
 }
 
+fn part2(raw_input: &'static str) -> usize
+{
+    let (seats, max) = input(raw_input);
+
+    let mut occupied_seats = HashSet::new();
+    loop {
+        let mut new_occupied_seats = occupied_seats.clone();
+        let mut modified = false;
+
+        for seat in &seats {
+            let mut number_of_occupied_seats = 0;
+    
+            for line_diff in &[-1, 0, 1] {
+                for column_diff in &[-1, 0, 1] {
+                    if *line_diff == 0 && *column_diff == 0 {
+                        continue;
+                    }
+
+                    let mut position = (*seat).clone();
+                    loop {
+                        position.column += column_diff;
+                        position.line += line_diff;
+
+                        if seats.contains(&position) {
+                            break;
+                        }
+
+                        if position.column < 0 || position.column > max.column {
+                            break;
+                        }
+
+                        if position.line < 0 || position.line > max.line {
+                            break;
+                        }
+                    }
+                    
+                    if occupied_seats.contains(&position) {
+                        number_of_occupied_seats += 1;
+                    }
+                }
+            }
+    
+            if occupied_seats.contains(seat) {
+                if number_of_occupied_seats >= 5 {
+                    modified = true;
+                    new_occupied_seats.remove(seat);
+                }
+            } else {
+                if number_of_occupied_seats == 0 {
+                    modified = true;
+                    new_occupied_seats.insert(seat);
+                }
+            }
+        }
+
+        if !modified {
+            return new_occupied_seats.len();
+        }
+
+        occupied_seats = new_occupied_seats;
+    }
+}
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(2102, part2(raw_input()));
+    assert_eq!(26, part2("
+    L.LL.LL.LL
+    LLLLLLL.LL
+    L.L.L..L..
+    LLLL.LL.LL
+    L.LL.LL.LL
+    L.LLLLL.LL
+    ..L.L.....
+    LLLLLLLLLL
+    L.LLLLLL.L
+    L.LLLLL.LL
+    "));
+}
+
 #[test]
 fn test_part1()
 {
+    assert_eq!(2321, part1(raw_input()));
     assert_eq!(37, part1("
     L.LL.LL.LL
     LLLLLLL.LL
