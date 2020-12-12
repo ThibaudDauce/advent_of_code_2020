@@ -2,6 +2,9 @@ fn main()
 {
     let result = part1(raw_input());
     println!("Part 1 {}", result);
+
+    let result = part2(raw_input());
+    println!("Part 2 {}", result);
 }
 
 #[derive(Debug)]
@@ -30,10 +33,15 @@ enum Direction
 }
 
 #[derive(Debug)]
-struct Ship
-{
+struct Position {
     east: i64,
     north: i64,
+}
+
+#[derive(Debug)]
+struct Ship
+{
+    position: Position,
     direction: Direction,
 }
 
@@ -41,19 +49,81 @@ fn part1(raw_input: &'static str) -> i64
 {
     let instructions = input(raw_input);
 
-    let mut ship = Ship { east: 0, north: 0, direction: Direction::East };
+    let mut ship = Ship { position: Position { east: 0, north: 0 }, direction: Direction::East };
 
     for instruction in instructions {
         match instruction.action {
-            Action::Move(direction) => { ship = move_ship(ship, Some(direction), instruction.value) },
+            Action::Move(direction) => { ship.position = move_position(ship.position, direction, instruction.value) },
             Action::TurnLeft => { ship.direction = degrees_to_direction(direction_to_degrees(ship.direction) - instruction.value) },
             Action::TurnRight => { ship.direction = degrees_to_direction(direction_to_degrees(ship.direction) + instruction.value) },
-            Action::Forward => { ship = move_ship(ship, None, instruction.value)},
+            Action::Forward => { ship.position = move_position(ship.position, ship.direction, instruction.value)},
         }
     }
 
-    ship.north.abs() + ship.east.abs()
+    ship.position.north.abs() + ship.position.east.abs()
 }
+
+fn part2(raw_input: &'static str) -> i64
+{
+    let instructions = input(raw_input);
+
+    let mut ship = Ship { position: Position { east: 0, north: 0 }, direction: Direction::East };
+    let mut waypoint = Position { east: 10, north: 1 };
+
+    for instruction in instructions {
+        match instruction.action {
+            Action::Move(direction) => { waypoint = move_position(waypoint, direction, instruction.value) },
+            Action::TurnLeft => {
+                match instruction.value {
+                    90 => {
+                        let (new_east, new_north) = (-waypoint.north, waypoint.east);
+                        waypoint.east = new_east;
+                        waypoint.north = new_north;
+                    },
+                    180 => {
+                        let (new_east, new_north) = (-waypoint.east, -waypoint.north);
+                        waypoint.east = new_east;
+                        waypoint.north = new_north;
+                    },
+                    270 => {
+                        let (new_east, new_north) = (waypoint.north, -waypoint.east);
+                        waypoint.east = new_east;
+                        waypoint.north = new_north;
+                    },
+                    _ => panic!("Unknown turn left value {}", instruction.value),
+                }
+            },
+            Action::TurnRight => { 
+                match instruction.value {
+                    90 => {
+                        let (new_east, new_north) = (waypoint.north, -waypoint.east);
+                        waypoint.east = new_east;
+                        waypoint.north = new_north;
+                    },
+                    180 => {
+                        let (new_east, new_north) = (-waypoint.east, -waypoint.north);
+                        waypoint.east = new_east;
+                        waypoint.north = new_north;
+                    },
+                    270 => {
+                        let (new_east, new_north) = (-waypoint.north, waypoint.east);
+                        waypoint.east = new_east;
+                        waypoint.north = new_north;
+                        
+                    },
+                    _ => panic!("Unknown turn left value {}", instruction.value),
+                }
+            },
+            Action::Forward => { 
+                ship.position.east += waypoint.east * instruction.value;    
+                ship.position.north += waypoint.north * instruction.value;    
+            },
+        }
+    }
+
+    ship.position.north.abs() + ship.position.east.abs()
+}
+
 
 fn direction_to_degrees(direction: Direction) -> i64
 {
@@ -81,16 +151,16 @@ fn degrees_to_direction(degrees: i64) -> Direction
     }
 }
 
-fn move_ship(mut ship: Ship, direction: Option<Direction>, value: i64) -> Ship
+fn move_position(mut position: Position, direction: Direction, value: i64) -> Position
 {
-    match direction.unwrap_or(ship.direction.clone()) {
-        Direction::East => ship.east += value,
-        Direction::West => ship.east -= value,
-        Direction::North => ship.north += value,
-        Direction::South => ship.north -= value,
+    match direction {
+        Direction::East => position.east += value,
+        Direction::West => position.east -= value,
+        Direction::North => position.north += value,
+        Direction::South => position.north -= value,
     };
 
-    ship
+    position
 }
 
 fn input(raw_input: &'static str) -> Vec<Instruction>
@@ -116,7 +186,20 @@ fn input(raw_input: &'static str) -> Vec<Instruction>
 #[test]
 fn test_part1()
 {
+    assert_eq!(439, part1(raw_input()));
     assert_eq!(25, part1("
+    F10
+    N3
+    F7
+    R90
+    F11
+    "));
+}
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(286, part2("
     F10
     N3
     F7
