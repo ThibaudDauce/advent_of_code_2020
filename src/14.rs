@@ -4,6 +4,9 @@ fn main()
 {
     let result = part1(raw_input());
     println!("{}", result);
+   
+    let result = part2(raw_input());
+    println!("{}", result);
 }
 
 fn part1(raw_input: &'static str) -> u64
@@ -33,6 +36,41 @@ fn part1(raw_input: &'static str) -> u64
     values.values().sum()
 }
 
+fn part2(raw_input: &'static str) -> u64
+{
+    let mut permutations = vec![];
+    let mut zeros = 0;
+    let mut ones = 0;
+    let mut values = HashMap::new();
+
+    for line in raw_input.trim().lines() {
+        if line.trim().starts_with("mask = ") {
+            let (_, mask_as_string) = line.trim().split_at("mask = ".len());
+
+           let (new_permutations, new_zeros, new_ones) = mask_from_string_part2(mask_as_string);
+           permutations = new_permutations;
+           zeros = new_zeros;
+           ones = new_ones;
+        } else {
+            let mut parts = line.trim().split(" = ");
+            let mem = parts.next().unwrap();
+            let value: u64 = parts.next().unwrap().parse().unwrap();
+
+            let mut address: u64 = (&mem[4..mem.len() - 1]).parse().unwrap();
+
+            address = address | ones;
+            address = address & zeros;
+
+            for permutation in &permutations {
+                values.insert(address + permutation, value);
+            }
+            
+        }
+    }
+
+    values.values().sum()
+}
+
 fn mask_from_string(mask: &str) -> (u64, u64)
 {
     let mut position: u64 = 1;
@@ -52,6 +90,48 @@ fn mask_from_string(mask: &str) -> (u64, u64)
     (!zeros, ones)
 }
 
+fn mask_from_string_part2(mask: &str) -> (Vec<u64>, u64, u64)
+{
+    let mut position: u64 = 1;
+    let mut x = vec![];
+    let mut zeros: u64 = 0;
+    let mut ones: u64 = 0;
+
+    for one_char in  mask.chars().rev() {
+        match one_char {
+            '1' => ones += position,
+            'X' => {
+                x.push(position);
+                zeros += position;
+            },
+            _ => {},
+        }
+
+        position *= 2;
+    }
+
+    (get_permutations(&x, 0), !zeros, ones)
+}
+
+fn get_permutations(values: &Vec<u64>, index: usize) -> Vec<u64>
+{
+    if index == values.len() {
+        return vec![0];
+    }
+
+    let permutations = get_permutations(values, index + 1);
+
+    let mut new_permutations = Vec::with_capacity(permutations.len() * 2);
+    for permutation in &permutations {
+        new_permutations.push(*permutation);
+    } 
+    for permutation in &permutations {
+        new_permutations.push(*permutation + values[index]);
+    } 
+
+    new_permutations
+}
+
 fn apply_mask(mut value: u64, zeros: u64, ones: u64) -> u64
 {
     value = value | ones;
@@ -67,6 +147,17 @@ fn test_part1()
     mem[8] = 11
     mem[7] = 101
     mem[8] = 0
+    "))
+}
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(208, part2("
+    mask = 000000000000000000000000000000X1001X
+    mem[42] = 100
+    mask = 00000000000000000000000000000000X0XX
+    mem[26] = 1
     "))
 }
 
@@ -93,6 +184,20 @@ fn test_mask_from_string()
     let (zeros, ones) = mask_from_string("XX11");
     assert_eq!(u64::MAX - 0, zeros);
     assert_eq!(3, ones);
+}
+
+#[test]
+fn test_mask_from_string_part2()
+{
+    let (permutations, floating_bits, ones) = mask_from_string_part2("XX11");
+    assert_eq!(vec![0, 8, 4, 12], permutations);
+    assert_eq!(u64::MAX - 4 - 8, floating_bits);
+    assert_eq!(3, ones);
+    
+    let (permutations, floating_bits, ones) = mask_from_string_part2("XX0X");
+    assert_eq!(vec![0, 8, 4, 12, 1, 9, 5, 13], permutations);
+    assert_eq!(u64::MAX - 1 - 4 - 8, floating_bits);
+    assert_eq!(0, ones);
 }
 
 fn raw_input() -> &'static str
