@@ -4,9 +4,22 @@ fn main()
 {
     let result = part1(raw_input());
     println!("{}", result);
+
+    let result = part2(raw_input());
+    println!("{}", result);
 }
 
 fn part1(raw_input: &'static str) -> u64
+{
+    compute(raw_input, 2020)
+}
+
+fn part2(raw_input: &'static str) -> u64
+{
+    compute(raw_input, 30_000_000)
+}
+
+fn compute(raw_input: &'static str, stop: u64) -> u64
 {
     let mut records = HashMap::new();
 
@@ -36,7 +49,7 @@ fn part1(raw_input: &'static str) -> u64
         last_digit = new_digit;
 
 
-        if turn == 2020 {
+        if turn == stop {
             return new_digit;
         }
 
@@ -54,6 +67,18 @@ fn test_part1()
     assert_eq!(78, part1("2,3,1"));
     assert_eq!(438, part1("3,2,1"));
     assert_eq!(1836, part1("3,1,2"));
+}
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(175594, part2("0,3,6"));
+    assert_eq!(2578, part2("1,3,2"));
+    assert_eq!(3544142, part2("2,1,3"));
+    assert_eq!(261214, part2("1,2,3"));
+    assert_eq!(6895259, part2("2,3,1"));
+    assert_eq!(18, part2("3,2,1"));
+    assert_eq!(362, part2("3,1,2"));
 }
 
 fn raw_input() -> &'static str
