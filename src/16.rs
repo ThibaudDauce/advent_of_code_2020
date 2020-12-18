@@ -1,23 +1,35 @@
 use std::ops::RangeInclusive;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 fn main()
 {
     let result = part1(raw_input());
     println!("{}", result);
+
+    let result = part2(raw_input());
+    println!("{}", result);
 }
 
-struct ValueType
+struct DoubleRange
 {
-    name: &'static str,
-    range_1: RangeInclusive<u64>,
-    range_2: RangeInclusive<u64>,
+    range_1: RangeInclusive<usize>,
+    range_2: RangeInclusive<usize>,
 }
 
-fn part1(raw_input: &'static str) -> u64
+struct Data
+{
+    fields: HashMap<&'static str, DoubleRange>,
+    my_ticket: Vec<usize>,
+    nearby_tickets: Vec<Vec<usize>>,
+    number_of_values: usize,
+}
+
+fn data_from_raw_input(raw_input: &'static str) -> Data
 {
     let mut parts = raw_input.trim().split("\n\n");
 
-    let value_types: Vec<ValueType> = parts.next().unwrap().trim().lines().map(|line| {
+    let fields: HashMap<&'static str, DoubleRange> = parts.next().unwrap().trim().lines().map(|line| {
         let mut parts = line.trim().split(": ");
 
         let name = parts.next().unwrap();
@@ -29,27 +41,126 @@ fn part1(raw_input: &'static str) -> u64
         let mut range_2_as_vec = ranges.next().unwrap().split('-');
         let range_2 = range_2_as_vec.next().unwrap().parse().unwrap()..=range_2_as_vec.next().unwrap().parse().unwrap();
 
-        ValueType { name, range_1, range_2 }
+        ( name, DoubleRange { range_1, range_2 })
     }).collect();
 
-    parts.next().unwrap();
+    let my_ticket: Vec<usize> = parts.next().unwrap().lines().skip(1).next().unwrap().trim().split(',').map(|digit| digit.parse().unwrap()).collect();
 
-    let nearby_tickets: Vec<Vec<u64>> = parts.next().unwrap().lines().skip(1).map(|line| {
+    let nearby_tickets: Vec<Vec<usize>> = parts.next().unwrap().lines().skip(1).map(|line| {
         line.trim().split(',').map(|digit| {
             digit.parse().unwrap()
         }).collect()
     }).collect();
 
+    let nearby_ticket = nearby_tickets.first().unwrap().clone();
+
+    Data { fields, my_ticket, nearby_tickets, number_of_values: nearby_ticket.len() }
+}
+
+fn part1(raw_input: &'static str) -> usize
+{
+    let data = data_from_raw_input(raw_input);
+
     let mut result = 0;
-    for nearby_ticket in nearby_tickets {
-        'value_loop: for value in &nearby_ticket {
-            for value_type in &value_types {
-                if value_type.range_1.contains(value) || value_type.range_2.contains(value) {
-                    continue 'value_loop;
+    for nearby_ticket in &data.nearby_tickets {
+        if let Some(invalid_value) = get_invalid_value(&data, &nearby_ticket) {
+            result += invalid_value;
+        }
+    }
+
+    result
+}
+
+fn get_invalid_value(data: &Data, nearby_ticket: &Vec<usize>) -> Option<usize>
+{
+    'value_loop: for value in nearby_ticket {
+        for (_name, ranges) in &data.fields {
+            if ranges.range_1.contains(value) || ranges.range_2.contains(value) {
+                continue 'value_loop;
+            }
+        }
+
+        return Some(*value);
+    }
+
+    None
+}
+
+fn is_valid_ticket(data: &Data, nearby_ticket: &Vec<usize>) -> bool
+{
+    get_invalid_value(data, nearby_ticket).is_none()
+}
+
+fn part2(raw_input: &'static str) -> usize
+{
+    let fields_index = compute_part2(raw_input);
+    dbg!(&fields_index);
+
+    let data = data_from_raw_input(raw_input);
+
+    let mut result = 1;
+    for (name, index) in fields_index {
+        if name.starts_with("departure") {
+            result *= data.my_ticket[index];
+        }
+    }
+
+
+    result
+}
+
+fn compute_part2(raw_input: &'static str) -> HashMap<&'static str, usize>
+{
+    let data = data_from_raw_input(raw_input);
+
+    let mut result: HashMap<&'static str, usize> = HashMap::new();
+
+    let nearby_tickets: Vec<&Vec<usize>> = data.nearby_tickets.iter().filter(|nearby_ticket| is_valid_ticket(&data, &nearby_ticket)).collect(); 
+
+    loop {
+        let previous_length = result.len();
+
+        for index in 0..data.number_of_values {
+            let mut matching: Option<HashSet<&'static str>> = None;
+            for nearby_ticket in &nearby_tickets {
+                let value = nearby_ticket[index];
+
+                if let Some(ref mut matching) = matching {
+                    let mut new_matching = matching.clone();
+
+                    for name in matching.iter() {
+                        let ranges = data.fields.get(name).unwrap();
+                        if !ranges.range_1.contains(&value) && !ranges.range_2.contains(&value) {
+                            new_matching.remove(name);
+                        }
+                    }
+
+                    *matching = new_matching;
+                } else {
+                    let mut new_matching = HashSet::new();
+
+                    for (name, ranges) in &data.fields {
+                        if result.contains_key(name) {
+                            continue;
+                        }
+
+                        if ranges.range_1.contains(&value) || ranges.range_2.contains(&value) {
+                            new_matching.insert(*name);
+                        }
+                    }
+
+                    matching = Some(new_matching);
                 }
             }
+            
+            let matching = matching.unwrap();
+            if matching.len() == 1 {
+                result.insert(matching.iter().next().unwrap(), index);
+            }
+        }
 
-            result += value;
+        if result.len() == previous_length {
+            break;
         }
     }
 
@@ -57,8 +168,32 @@ fn part1(raw_input: &'static str) -> u64
 }
 
 #[test]
+fn test_part2()
+{
+    let mut expected = HashMap::new();
+    expected.insert("row", 0);
+    expected.insert("class", 1);
+    expected.insert("seat", 2);
+
+    assert_eq!(expected, compute_part2("
+    class: 0-1 or 4-19
+    row: 0-5 or 8-19
+    seat: 0-13 or 16-19
+
+    your ticket:
+    11,12,13
+
+    nearby tickets:
+    3,9,18
+    15,1,5
+    5,14,9
+    "))
+}
+
+#[test]
 fn test_part1()
 {
+    assert_eq!(20091, part1(raw_input()));
     assert_eq!(71, part1("
     class: 1-3 or 5-7
     row: 6-11 or 33-44
