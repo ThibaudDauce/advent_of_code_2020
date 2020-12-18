@@ -2,6 +2,8 @@ fn main()
 {
     let result = part1(raw_input());
     println!("{}", result);
+    let result = part2(raw_input());
+    println!("{}", result);
 }
 
 fn part1(raw_input: &'static str) -> i64
@@ -9,7 +11,12 @@ fn part1(raw_input: &'static str) -> i64
     raw_input.trim().lines().map(|line| compute(line)).sum()
 }
 
-#[derive(Debug)]
+fn part2(raw_input: &'static str) -> i64
+{
+    raw_input.trim().lines().map(|line| compute_part2(line)).sum()
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum Token {
     Plus,
     Multiply,
@@ -34,25 +41,101 @@ fn compute(line: &'static str) -> i64
         }
     }
 
-    let (result, _) = compute_value(&tokens, 0);
+    let (result, _) = compute_value(&tokens, 0, false);
     result
 }
 
-fn get_value(tokens: &Vec<Token>, index: usize) -> (i64, usize)
+fn compute_part2(line: &'static str) -> i64
+{
+    let mut tokens = vec![];
+    const RADIX: u32 = 10;
+
+    for one_char in line.trim().chars() {
+        match one_char {
+            ' ' => {},
+            '+' => tokens.push(Token::Plus),
+            '*' => tokens.push(Token::Multiply),
+            '(' => tokens.push(Token::OpenBrace),
+            ')' => tokens.push(Token::CloseBrace),
+            digit => tokens.push(Token::Digit(digit.to_digit(RADIX).unwrap() as i64)),
+        }
+    }
+
+    loop {
+        let mut simplified = false;
+        let mut new_tokens = vec![];
+
+        let mut index = 0;
+        'main_loop: loop {
+            if index >= tokens.len() {
+                break;
+            }
+            if let Token::Digit(value_a) = tokens[index] {
+                if index + 1 < tokens.len() && tokens[index + 1] == Token::Plus {
+                    if let Token::Digit(value_b) = tokens[index + 2] {
+                        simplified = true;
+                        new_tokens.push(Token::Digit(value_a + value_b));
+                        index += 3;
+                        continue 'main_loop;
+                    }
+                }
+            }
+
+            if tokens[index] == Token::OpenBrace {
+                let mut new_index = index + 1;
+                let mut result = 1;
+                loop {
+                    if new_index >= tokens.len() {
+                        break;
+                    }
+
+                    match tokens[new_index] {
+                        Token::Plus => break,
+                        Token::OpenBrace => break,
+                        Token::Digit(value) => result *= value,
+                        Token::CloseBrace => {
+                            simplified = true;
+                            new_tokens.push(Token::Digit(result));
+                            index = new_index + 1;
+                            continue 'main_loop;
+                        },
+                        Token::Multiply => {},
+                    };
+
+                    new_index += 1;
+                }
+            }
+
+            new_tokens.push(tokens[index]);
+            index += 1;
+        }
+
+        tokens = new_tokens;
+
+        if !simplified {
+            break;
+        }
+    }
+
+    let (result, _) = compute_value(&tokens, 0, true);
+    result
+}
+
+fn get_value(tokens: &Vec<Token>, index: usize, precedence: bool) -> (i64, usize)
 {
     match tokens[index] {
         Token::Digit(digit) => (digit, index + 1),
-        Token::OpenBrace => compute_value(tokens, index + 1), // return +1 index?
+        Token::OpenBrace => compute_value(tokens, index + 1, precedence), // return +1 index?
         _ => panic!("Invalid token for get_value"),
     }
 }
 
-fn compute_value(tokens: &Vec<Token>, index: usize) -> (i64, usize)
+fn compute_value(tokens: &Vec<Token>, index: usize, precedence: bool) -> (i64, usize)
 {
     let mut result;
-
-    let (value_a, operator_index) = get_value(tokens, index);
-
+    
+    let (value_a, operator_index) = get_value(tokens, index, precedence);
+    
     result = value_a;
     let mut current_index = operator_index;
     
@@ -60,18 +143,21 @@ fn compute_value(tokens: &Vec<Token>, index: usize) -> (i64, usize)
         if current_index >= tokens.len() {
             return (result, current_index);
         }
-    
         result = match &tokens[current_index] {
             Token::CloseBrace => {
                 return (result, current_index + 1);
             },
             Token::Plus => {
-                let (value_b, end_index) = get_value(tokens, current_index + 1);
+                let (value_b, end_index) = get_value(tokens, current_index + 1, precedence);
                 current_index = end_index;
                 result + value_b
             },
             Token::Multiply => {
-                let (value_b, end_index) = get_value(tokens, current_index + 1);
+                let (value_b, end_index) = if precedence {
+                    compute_value(tokens, current_index + 1, precedence)
+                } else {
+                    get_value(tokens, current_index + 1, precedence)
+                };
                 current_index = end_index;
                 result * value_b
             },
@@ -79,6 +165,22 @@ fn compute_value(tokens: &Vec<Token>, index: usize) -> (i64, usize)
         };
     }
 }
+
+#[test]
+fn test_part2()
+{
+    assert_eq!(4, compute_part2("4"));
+    assert_eq!(6, compute_part2("4 + 2"));
+    assert_eq!(9, compute_part2("4 + 2 + 3"));
+    assert_eq!(6 * 3, compute_part2("4 + 2 * 3"));
+    assert_eq!(4 * (2 + 3), compute_part2("4 * 2 + 3"));
+    assert_eq!(4 * (2 + (3 * 8)), compute_part2("4 * 2 + (3 * 8)"));
+    assert_eq!(51, compute_part2("1 + (2 * 3) + (4 * (5 + 6))"));
+    assert_eq!(1445, compute_part2("5 + (8 * 3 + 9 + 3 * 4 * 3)"));
+    assert_eq!(669060, compute_part2("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))"));
+    assert_eq!(23340, compute_part2("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2"));
+}
+
 
 #[test]
 fn test_part1()
@@ -93,7 +195,6 @@ fn test_part1()
     assert_eq!(12240, compute("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))"));
     assert_eq!(13632, compute("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2"));
 }
-
 fn raw_input() -> &'static str
 {
     "
